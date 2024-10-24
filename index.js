@@ -14,7 +14,13 @@ const init = async () => {
     port: 3313,
     host: '0.0.0.0',
   });
-
+  server.route({
+    method: 'GET',
+    path: '/',
+    handler: (request, h) => {
+        return 'Hello, Hapi deployed on Railway!';
+    }
+  });
   // Register Routes
   server.route(adminRoutes);
   server.route(productRoutes);
