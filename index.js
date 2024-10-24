@@ -12,7 +12,7 @@ connectDB();
 const init = async () => {
   const server = Hapi.server({
     port: 3313,
-    host: 'localhost',
+    host: '0.0.0.0',
   });
 
   // Register Routes
