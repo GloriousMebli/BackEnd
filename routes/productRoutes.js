@@ -1,161 +1,113 @@
-const Product = require('../models/Product');
-
-const authenticate = require('../middlewares/authMiddleware');
-const uploadImage = require('../functions/upload'); // Make sure to adjust the path
-
+const express = require('express');
 const multer = require('multer');
+const Product = require('../models/Product');
+const authenticate = require('../middlewares/authMiddleware');
+const uploadImage = require('../functions/upload'); // Adjust the path if needed
 
-const upload = multer({ dest: 'uploads/' }); 
+const upload = multer({ dest: 'uploads/' });
+const router = express.Router();
 
-module.exports = [
-  {
-    method: 'POST',
-    path: '/api/products',
-    options: {
-      pre: [{ method: authenticate }],
-    },
-    handler: async (request, h) => {
-      const payload = request.payload;
+// Create Product
+router.post('', authenticate, async (req, res) => {
+  const payload = req.body;
 
-      try {
-        const product = new Product(payload);
-        await product.save();
-        return h.response({ message: 'Product created', data: product }).code(201);
-      } catch (error) {
-        return h.response({ error: error.message }).code(400);
-      }
-    },
-  },
-  {
-    method: 'GET',
-    path: '/api/products',
-    handler: async (request, h) => {
-      try {
-        const { category } = request.query;
-        let criteria = {};
+  try {
+    const product = new Product(payload);
+    await product.save();
+    res.status(201).json({ message: 'Product created', data: product });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
-        if (category) {
-          criteria.category = category;
-        }
+// Get Products
+router.get('', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const criteria = category ? { category } : {};
 
-        const products = await Product.find(criteria);
-        return h.response(products);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-  {
-    method: 'GET',
-    path: '/api/products/{id}',
-    handler: async (request, h) => {
-      try {
-        const product = await Product.findById(request.params.id);
-        
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
+    const products = await Product.find(criteria);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-        return h.response(product);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-  {
-    method: 'PATCH',
-    path: '/api/products/{id}',
-    options: {
-      pre: [{ method: authenticate }], // Use the middleware
-    },
-    handler: async (request, h) => {
-      const { id } = request.params;
-      const updates = request.payload; // Get the fields that need to be updated from the request payload
+// Get Product by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
 
-      try {
-        // Find the product by ID and update the specified fields
-        const product = await Product.findByIdAndUpdate(
-          id,
-          {
-            $set: updates, // Use $set to update only the provided fields
-          },
-          { new: true } // Return the updated product
-        );
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-        return h.response(product).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-  {
-    method: 'DELETE',
-    options: {
-      pre: [{ method: authenticate }], // Use the middleware
-    },
-    path: '/api/products/{id}',
-    handler: async (request, h) => {
-      const { id } = request.params;
+// Update Product
+router.patch('/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
 
-      try {
-        // Find the product by ID and delete it
-        const product = await Product.findByIdAndDelete(id);
+  try {
+    const product = await Product.findByIdAndUpdate(id, { $set: updates }, { new: true });
 
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-        return h.response({ message: 'Product deleted successfully' }).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
+// Delete Product
+router.delete('/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
 
-  {
-    method: 'POST',
-    path: '/api/products/{id}/image',
-    options: {
-      pre: [{ method: authenticate }],
-      payload: {
-        output: 'stream',
-        parse: true,
-        allow: 'multipart/form-data',
-        multipart: true,
-        maxBytes: 10485760, // 10MB limit for image
-      },
-    },
-    handler: async (request, h) => {
-      const { id } = request.params;
-      const { isMain = false, file } = request.payload; 
+  try {
+    const product = await Product.findByIdAndDelete(id);
 
-      try {
-        // Find the product by ID
-        const product = await Product.findById(id);
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-        const publicUrl = await uploadImage(file._data, file.hapi.filename);
+    res.status(200).json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-        const imageInfo = {
-          url: publicUrl,
-          isMain
-        };
+// Upload Product Image
+router.post('/:id/image', authenticate, upload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  const isMain = req.body.isMain === 'true';
 
-        // Add the image information to the product
-        product.images.push(imageInfo);
-        await product.save();
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-        return h.response(product).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-];
+    const publicUrl = await uploadImage(req.file.path, req.file.originalname);
+
+    const imageInfo = {
+      url: publicUrl,
+      isMain,
+    };
+
+    product.images.push(imageInfo);
+    await product.save();
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
