@@ -20,7 +20,7 @@ app.use(express.json());
 
 // Home Route
 app.get('/', (req, res) => {
-  res.send('Hello, Express deployed on Railway!');
+  res.send('API Glorious!');
 });
 
 // Register Routes
