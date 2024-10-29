@@ -5,12 +5,15 @@ const connectDB = require('./config/db');
 const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const cors = require('cors');
 
 // Connect to MongoDB
 connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3313;
+
+app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());
