@@ -3,8 +3,8 @@ const multer = require('multer');
 const Product = require('../models/Product');
 const authenticate = require('../middlewares/authMiddleware');
 const uploadImage = require('../functions/upload'); // Adjust the path if needed
-
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.memoryStorage(); // Use memory storage to store files in memory
+const upload = multer({ storage }); // Set multer to use this storage
 const router = express.Router();
 
 // Create Product
@@ -23,8 +23,16 @@ router.post('', authenticate, async (req, res) => {
 // Get Products
 router.get('', async (req, res) => {
   try {
-    const { category } = req.query;
-    const criteria = category ? { category } : {};
+    const query = req.query;
+    const criteria = {}
+
+    if (query.category) {
+      criteria.category = query.category;
+    }
+
+    if (query.popular) {
+      criteria.popular = true;
+    }
 
     const products = await Product.find(criteria);
     res.json(products);
@@ -94,10 +102,11 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    const publicUrl = await uploadImage(req.file.path, req.file.originalname);
+    const data = await uploadImage(req.file.buffer, req.file.originalname);
 
     const imageInfo = {
-      url: publicUrl,
+      url: data.publicUrl,
+      thumbnailUrl: data.thumbnailUrl,
       isMain,
     };
 
@@ -109,5 +118,6 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
     res.status(500).json({ error: error.message });
   }
 });
+
 
 module.exports = router;

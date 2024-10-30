@@ -1,6 +1,6 @@
 module.exports = {
-  applicationKeyId: '003b3846577807e0000000002',
-  applicationKey: 'K003BnaLYIcCCevHlh0Eys8639n6Q/s',
-  bucketId: '2b13c834161577279820071e',
-  publicUrl: 'https://f003.backblazeb2.com/file/glorious-test-01/'
+  applicationKeyId: '0038d2b30a6589e0000000001',
+  applicationKey: 'K003JxxtU5BGwQ1pCB7RGtYhRU6HxhM',
+  bucketId: '182d128b5360da969528091e',
+  publicUrl: 'https://f003.backblazeb2.com/file/glorious-catalog/'
 }

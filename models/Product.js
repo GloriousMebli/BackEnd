@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema({
   name: String,
-  price: Number,
+  price: String,
   category: {
     _id: mongoose.Schema.Types.ObjectId,
     label: String
@@ -15,6 +15,9 @@ const ProductSchema = new mongoose.Schema({
   images: [
     {
       url: {
+        type: String
+      },
+      thumbnailUrl: {
         type: String
       },
       isMain: Boolean
