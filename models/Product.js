@@ -20,7 +20,13 @@ const ProductSchema = new mongoose.Schema({
       thumbnailUrl: {
         type: String
       },
-      isMain: Boolean
+      isMain: Boolean,
+      meta:{
+        fileId: String,
+        fileName: String,
+        thumbnailFileId: String,
+        thumbnailFileName: String
+      }
     },
   ],
 });

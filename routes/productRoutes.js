@@ -2,7 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const Product = require('../models/Product');
 const authenticate = require('../middlewares/authMiddleware');
-const uploadImage = require('../functions/upload'); // Adjust the path if needed
+const {uploadImage, deleteImage } = require('../functions/upload'); // Adjust the path if needed
+const config = require('../config/bb');
 const storage = multer.memoryStorage(); // Use memory storage to store files in memory
 const upload = multer({ storage }); // Set multer to use this storage
 const router = express.Router();
@@ -32,6 +33,11 @@ router.get('', async (req, res) => {
 
     if (query.popular) {
       criteria.popular = true;
+    }
+
+    if (query.withNameAndImage === 'true') {
+      criteria.name = { $ne: null };
+      criteria.images = { $ne: [] };
     }
 
     const products = await Product.find(criteria);
@@ -102,12 +108,42 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    const data = await uploadImage(req.file.buffer, req.file.originalname);
+    let maxRetries = 5 
+    let retries = 0
+    let err
+    let data
+
+    while (retries < maxRetries) {
+      const uploadResult = await uploadImage(req.file.buffer, req.file.originalname);
+
+      err = uploadResult.err
+      data = uploadResult.result
+
+      if (!err) {
+        retries = maxRetries + 1
+      }
+      if(err){
+        console.log(err)
+      }
+      retries++
+    }
+
+    if(err){
+      return { err }
+    }
+    const publicUrl = config.publicUrl + data?.response?.data?.fileName;
+    const thumbnailUrl = config.publicUrl + data?.thumbnailResponse?.data?.fileName;
 
     const imageInfo = {
-      url: data.publicUrl,
-      thumbnailUrl: data.thumbnailUrl,
+      url: publicUrl,
+      thumbnailUrl: thumbnailUrl,
       isMain,
+      meta: {
+        fileId: data?.response?.data?.fileId,
+        thumbnailFileId: data?.thumbnailResponse?.data?.fileId,
+        fileName: data?.response?.data?.fileName,
+        thumbnailFileName: data?.thumbnailResponse?.data?.fileName
+      }
     };
 
     product.images.push(imageInfo);
@@ -118,6 +154,29 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
     res.status(500).json({ error: error.message });
   }
 });
+
+
+router.delete('/:id/image/:imageId', authenticate, upload.single('file'), async (req, res) => {
+  const { id, imageId } = req.params;
+  try {
+    let product = await Product.findById(id).lean(true);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    const currentImage = product.images.find((image) => image._id.equals(imageId));
+
+    await deleteImage(currentImage.meta)
+
+    product.images = product.images.filter((image) => !image._id.equals(imageId));
+
+    await Product.updateOne({ _id: id }, { $set: { images: product.images } });
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 
 module.exports = router;

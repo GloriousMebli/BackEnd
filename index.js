@@ -1,5 +1,7 @@
 const express = require('express');
 const connectDB = require('./config/db');
+const {backBlazeInit} = require('./functions/upload');
+
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -9,7 +11,7 @@ const cors = require('cors');
 
 // Connect to MongoDB
 connectDB();
-
+backBlazeInit()
 const app = express();
 const PORT = process.env.PORT || 3313;
 
