@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
-
+const authenticate = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 // Register Admin
@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(200).json({ message: 'Logged in successfully', token });
   } catch (error) {
     res.status(500).json({ error: error.message });

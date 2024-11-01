@@ -27,8 +27,8 @@ router.get('', async (req, res) => {
     const query = req.query;
     const criteria = {}
 
-    if (query.category) {
-      criteria.category = query.category;
+    if (query?.categoryIds?.length) {
+      criteria['category._id'] = {$in: query.categoryIds.split(',')}
     }
 
     if (query.popular) {
