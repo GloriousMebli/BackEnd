@@ -7,6 +7,7 @@ const {backBlazeInit} = require('./functions/upload');
 const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const formRoutes = require('./routes/formRoutes');
 const cors = require('cors');
 
 // Connect to MongoDB
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 app.use('/api/admins', adminRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
-
+app.use('/api/submit-form', formRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
