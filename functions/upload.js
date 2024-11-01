@@ -9,12 +9,11 @@ const b2 = new BackblazeB2({
   applicationKey: config.applicationKey,
 });
 
-const imageResize = async (imageData, imageSize) => {
+const imageResize = async (imageData) => {
   return await new Promise((resolve, reject) => {
-    const size = imageSize.split('x')
     try {
       sharp(imageData, { failOnError: false })
-        .resize(1 * size[0], 1 * size[1])
+      .resize({ width: 566 })
         .withMetadata()
         .toBuffer((err, data, info) => {
           if (err) {
@@ -50,7 +49,7 @@ async function uploadImage(fileBuffer, fileName) {
       mime: 'image/jpeg', // Adjust mime type accordingly
     });
 
-    const thumbnail = await imageResize(fileBuffer, '568x310')
+    const thumbnail = await imageResize(fileBuffer)
 
     // Upload the file
     const thumbnailResponse = await b2.uploadFile({
