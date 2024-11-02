@@ -9,12 +9,12 @@ const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
-const TELEGRAM_TOKEN = '7794005080:AAFoOVUn-ynMKKrHxQbbgcICJ7xCK3FMFKk';
-const CHAT_IDS = ['985268057'];
+const TELEGRAM_TOKEN = '8196541893:AAHgV3ImUCvXDUiJE-NbP0AMDm1owScvtmg';
+const CHAT_IDS = ['-4559590342'];
 
 router.post('', async (req, res) => {
   const { name, phone } = req.body;
-  const text = `Заявка від:${name}\nНомер Телефону: ${phone}`;
+  const text = `Заявка від: ${name}\nНомер Телефону: ${phone}`;
 
   try {
     const promises = CHAT_IDS.map(chatId => {
