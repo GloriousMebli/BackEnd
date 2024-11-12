@@ -111,27 +111,30 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
 
     let maxRetries = 5 
     let retries = 0
-    let err
     let data
+    let delay = 1000; // Start with 1 second delay
 
     while (retries < maxRetries) {
-      const uploadResult = await uploadImage(req.file.buffer, req.file.originalname);
+      try {
+        const uploadResult = await uploadImage(req.file.buffer, req.file.originalname);
 
-      err = uploadResult.err
-      data = uploadResult.result
+        if (!uploadResult.err) {
+          data = uploadResult.result;
+          break; // Exit loop if upload succeeds
+        }
+        throw uploadResult.err;
 
-      if (!err) {
-        retries = maxRetries + 1
+      } catch (err) {
+        retries++;
+        console.log(`Retry ${retries}:`, err);
+        if (retries === maxRetries) {
+          return res.status(500).json({ message: 'Failed to upload image after multiple attempts' });
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Double the delay for each retry (exponential backoff)
       }
-      if(err){
-        console.log(err)
-      }
-      retries++
     }
 
-    if(err){
-      return { err }
-    }
     const publicUrl = config.publicUrl + data?.response?.data?.fileName;
     const thumbnailUrl = config.publicUrl + data?.thumbnailResponse?.data?.fileName;
 
