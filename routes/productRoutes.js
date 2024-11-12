@@ -40,7 +40,8 @@ router.get('', async (req, res) => {
       criteria.images = { $ne: [] };
     }
 
-    const products = await Product.find(criteria).sort({ _id: 1 });
+    const products = await Product.find(criteria)
+    products.sort(() => Math.random() - 0.5);
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: error.message });
