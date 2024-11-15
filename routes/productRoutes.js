@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const Product = require('../models/Product');
 const authenticate = require('../middlewares/authMiddleware');
-const {uploadImage, deleteImage } = require('../functions/upload'); // Adjust the path if needed
+const {uploadImage, deleteImage, backBlazeInit } = require('../functions/upload'); // Adjust the path if needed
 const config = require('../config/bb');
 const storage = multer.memoryStorage(); // Use memory storage to store files in memory
 const upload = multer({ storage }); // Set multer to use this storage
@@ -126,6 +126,9 @@ router.post('/:id/image', authenticate, upload.single('file'), async (req, res) 
 
       } catch (err) {
         retries++;
+        if(retries === 3){
+          await backBlazeInit()
+        }
         console.log(`Retry ${retries}:`, err);
         if (retries === maxRetries) {
           return res.status(500).json({ message: 'Failed to upload image after multiple attempts' });
