@@ -1,65 +1,59 @@
-const Admin = require('../models/Admin');
+const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Admin = require('../models/Admin');
+const authenticate = require('../middlewares/authMiddleware');
+const router = express.Router();
 
-module.exports = [
-  {
-    method: 'POST',
-    path: '/api/admins',
-    handler: async (request, h) => {
-      const { email, password, name } = request.payload;
-      
-      try {
-        const admin = new Admin({ email, password, name });
-        await admin.save();
-        return h.response({ message: 'Admin created' }).code(201);
-      } catch (error) {
-        return h.response({ error: error.message }).code(400);
-      }
-    },
-  },
+// Register Admin
+router.post('', async (req, res) => {
+  const { email, password, name } = req.body;
 
-  {
-    method: 'POST',
-    path: '/api/admins/login',
-    handler: async (request, h) => {
-      const { email, password } = request.payload;
+  try {
+    const admin = new Admin({ email, password, name });
+    await admin.save();
+    res.status(201).json({ message: 'Admin created' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
-      try {
-        const admin = await Admin.findOne({ email });
-        if (!admin) {
-          return h.response({ error: 'Invalid credentials' }).code(400);
-        }
+// Admin Login
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
-        const isMatch = await admin.comparePassword(password);
-        if (!isMatch) {
-          return h.response({ error: 'Invalid credentials' }).code(400);
-        }
+  try {
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
 
-        const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        return h.response({ message: 'Logged in successfully', token }).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
 
-  {
-    method: 'POST',
-    path: '/api/admins/verify-token',
-    handler: async (request, h) => {
-      const token = request.headers.authorization?.split(' ')[1];
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(200).json({ message: 'Logged in successfully', token });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-      if (!token) {
-        return h.response({ error: 'No token provided' }).code(401);
-      }
+// Verify Token
+router.post('/verify-token', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
 
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        return h.response({ message: 'Token is valid', valid: true, userId: decoded.id }).code(200);
-      } catch (error) {
-        return h.response({ error: 'Invalid token' }).code(401);
-      }
-    },
-  },
-];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.status(200).json({ message: 'Token is valid', valid: true, userId: decoded.id });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+module.exports = router;

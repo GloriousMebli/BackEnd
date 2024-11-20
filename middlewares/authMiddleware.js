@@ -3,21 +3,21 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const authenticate = async (request, h) => {
-  const authorization = request.headers.authorization;
+const authenticate = async (req, res, next) => {
+  const authorization = req.headers.authorization;
 
   if (!authorization) {
-    return h.response({ message: 'Authorization token is missing' }).code(401).takeover();
+    return res.status(401).json({ message: 'Authorization token is missing' });
   }
 
   const token = authorization.split(' ')[1]; // Extract the token from the header
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    request.user = decoded; // Attach user info to the request
-    return h.continue; // Continue to the next handler
+    req.user = decoded; // Attach user info to the request
+    next(); // Proceed to the next middleware or route handler
   } catch (error) {
-    return h.response({ message: 'Invalid token' }).code(401).takeover();
+    return res.status(401).json({ message: 'Invalid token' });
   }
 };
 

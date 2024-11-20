@@ -1,161 +1,189 @@
-const Product = require('../models/Product');
-
-const authenticate = require('../middlewares/authMiddleware');
-const uploadImage = require('../functions/upload'); // Make sure to adjust the path
-
+const express = require('express');
 const multer = require('multer');
+const Product = require('../models/Product');
+const authenticate = require('../middlewares/authMiddleware');
+const {uploadImage, deleteImage, backBlazeInit } = require('../functions/upload'); // Adjust the path if needed
+const config = require('../config/bb');
+const storage = multer.memoryStorage(); // Use memory storage to store files in memory
+const upload = multer({ storage }); // Set multer to use this storage
+const router = express.Router();
 
-const upload = multer({ dest: 'uploads/' }); 
+// Create Product
+router.post('', authenticate, async (req, res) => {
+  const payload = req.body;
 
-module.exports = [
-  {
-    method: 'POST',
-    path: '/api/products',
-    options: {
-      pre: [{ method: authenticate }],
-    },
-    handler: async (request, h) => {
-      const payload = request.payload;
+  try {
+    const product = new Product(payload);
+    await product.save();
+    res.status(201).json({ message: 'Product created', data: product });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
+// Get Products
+router.get('', async (req, res) => {
+  try {
+    const query = req.query;
+    const criteria = {}
+
+    if (query?.categoryIds?.length) {
+      criteria['category._id'] = {$in: query.categoryIds.split(',')}
+    }
+
+    if (query.popular) {
+      criteria.popular = true;
+    }
+
+    if (query.withNameAndImage === 'true') {
+      criteria.name = { $ne: null };
+      criteria.images = { $ne: [] };
+    }
+
+    const products = await Product.find(criteria)
+    products.sort(() => Math.random() - 0.5);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Product by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update Product
+router.patch('/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  try {
+    const product = await Product.findByIdAndUpdate(id, { $set: updates }, { new: true });
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete Product
+router.delete('/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const product = await Product.findByIdAndDelete(id);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.status(200).json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload Product Image
+router.post('/:id/image', authenticate, upload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  const isMain = req.body.isMain === 'true';
+
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    let maxRetries = 5 
+    let retries = 0
+    let data
+    let delay = 1000; // Start with 1 second delay
+
+    while (retries < maxRetries) {
       try {
-        const product = new Product(payload);
-        await product.save();
-        return h.response({ message: 'Product created', data: product }).code(201);
-      } catch (error) {
-        return h.response({ error: error.message }).code(400);
-      }
-    },
-  },
-  {
-    method: 'GET',
-    path: '/api/products',
-    handler: async (request, h) => {
-      try {
-        const { category } = request.query;
-        let criteria = {};
+        const uploadResult = await uploadImage(req.file.buffer, req.file.originalname);
 
-        if (category) {
-          criteria.category = category;
+        if (!uploadResult.err) {
+          data = uploadResult.result;
+          break; // Exit loop if upload succeeds
         }
+        throw uploadResult.err;
 
-        const products = await Product.find(criteria);
-        return h.response(products);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-  {
-    method: 'GET',
-    path: '/api/products/{id}',
-    handler: async (request, h) => {
-      try {
-        const product = await Product.findById(request.params.id);
-        
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
+      } catch (err) {
+        retries++;
+        if(retries === 3){
+          await backBlazeInit()
         }
-
-        return h.response(product);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-  {
-    method: 'PATCH',
-    path: '/api/products/{id}',
-    options: {
-      pre: [{ method: authenticate }], // Use the middleware
-    },
-    handler: async (request, h) => {
-      const { id } = request.params;
-      const updates = request.payload; // Get the fields that need to be updated from the request payload
-
-      try {
-        // Find the product by ID and update the specified fields
-        const product = await Product.findByIdAndUpdate(
-          id,
-          {
-            $set: updates, // Use $set to update only the provided fields
-          },
-          { new: true } // Return the updated product
-        );
-
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
+        console.log(`Retry ${retries}:`, err);
+        if (retries === maxRetries) {
+          return res.status(500).json({ message: 'Failed to upload image after multiple attempts' });
         }
-
-        return h.response(product).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Double the delay for each retry (exponential backoff)
       }
-    },
-  },
-  {
-    method: 'DELETE',
-    options: {
-      pre: [{ method: authenticate }], // Use the middleware
-    },
-    path: '/api/products/{id}',
-    handler: async (request, h) => {
-      const { id } = request.params;
+    }
 
-      try {
-        // Find the product by ID and delete it
-        const product = await Product.findByIdAndDelete(id);
+    const publicUrl = config.publicUrl + data?.response?.data?.fileName;
+    const thumbnailUrl = config.publicUrl + data?.thumbnailResponse?.data?.fileName;
 
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
-
-        return h.response({ message: 'Product deleted successfully' }).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
+    const imageInfo = {
+      url: publicUrl,
+      thumbnailUrl: thumbnailUrl,
+      isMain,
+      meta: {
+        fileId: data?.response?.data?.fileId,
+        thumbnailFileId: data?.thumbnailResponse?.data?.fileId,
+        fileName: data?.response?.data?.fileName,
+        thumbnailFileName: data?.thumbnailResponse?.data?.fileName
       }
-    },
-  },
+    };
+
+    product.images.push(imageInfo);
+    await product.save();
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
-  {
-    method: 'POST',
-    path: '/api/products/{id}/image',
-    options: {
-      pre: [{ method: authenticate }],
-      payload: {
-        output: 'stream',
-        parse: true,
-        allow: 'multipart/form-data',
-        multipart: true,
-        maxBytes: 10485760, // 10MB limit for image
-      },
-    },
-    handler: async (request, h) => {
-      const { id } = request.params;
-      const { isMain = false, file } = request.payload; 
+router.delete('/:id/image/:imageId', authenticate, upload.single('file'), async (req, res) => {
+  const { id, imageId } = req.params;
+  try {
+    let product = await Product.findById(id).lean(true);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    const currentImage = product.images.find((image) => image._id.equals(imageId));
 
-      try {
-        // Find the product by ID
-        const product = await Product.findById(id);
-        if (!product) {
-          return h.response({ message: 'Product not found' }).code(404);
-        }
+    await deleteImage(currentImage.meta)
 
-        const publicUrl = await uploadImage(file._data, file.hapi.filename);
+    product.images = product.images.filter((image) => !image._id.equals(imageId));
 
-        const imageInfo = {
-          url: publicUrl,
-          isMain
-        };
+    await Product.updateOne({ _id: id }, { $set: { images: product.images } });
 
-        // Add the image information to the product
-        product.images.push(imageInfo);
-        await product.save();
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-        return h.response(product).code(200);
-      } catch (error) {
-        return h.response({ error: error.message }).code(500);
-      }
-    },
-  },
-];
+
+
+module.exports = router;
