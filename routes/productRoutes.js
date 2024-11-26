@@ -21,14 +21,14 @@ router.post('', authenticate, async (req, res) => {
   }
 });
 
-// Get Products
 router.get('', async (req, res) => {
   try {
     const query = req.query;
-    const criteria = {}
+    const criteria = {};
 
+    // Фільтрація за категоріями
     if (query?.categoryIds?.length) {
-      criteria['category._id'] = {$in: query.categoryIds.split(',')}
+      criteria['category._id'] = { $in: query.categoryIds.split(',') };
     }
 
     if (query.popular) {
@@ -40,10 +40,31 @@ router.get('', async (req, res) => {
       criteria.images = { $ne: [] };
     }
 
-    const products = await Product.find(criteria)
-    products.sort(() => Math.random() - 0.5);
+    // Отримання даних
+    let products = await Product.find(criteria).limit(50); // Отримуємо до 50 записів для обробки
+
+    // Обробка ціни перед сортуванням
+    if (query.sortBy === 'price') {
+      products = products.map((product) => {
+        const numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
+        return { ...product.toObject(), numericPrice }; // Додаємо числове поле для сортування
+      });
+
+      // Сортування за ціною
+      products.sort((a, b) => {
+        const order = query.order === 'desc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
+        return order * (a.numericPrice - b.numericPrice);
+      });
+    } else if (query.sortBy === 'createdAt') {
+      // Сортування за датою
+      const order = query.order === 'desc' ? -1 : 1;
+      products.sort((a, b) => order * (new Date(a.createdAt) - new Date(b.createdAt)));
+    }
+
+    // Повернення перших 10 продуктів
     res.json(products);
   } catch (error) {
+    console.error('Error fetching products:', error);
     res.status(500).json({ error: error.message });
   }
 });
