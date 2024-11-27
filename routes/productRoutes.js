@@ -31,43 +31,49 @@ router.get('', async (req, res) => {
       criteria['category._id'] = { $in: query.categoryIds.split(',') };
     }
 
+    // Фільтрація за популярністю
     if (query.popular) {
       criteria.popular = true;
     }
 
+    // Фільтрація за наявністю імені та зображень
     if (query.withNameAndImage === 'true') {
       criteria.name = { $ne: null };
       criteria.images = { $ne: [] };
     }
 
     // Отримання даних
-    let products = await Product.find(criteria).limit(50); // Отримуємо до 50 записів для обробки
+    let products = await Product.find(criteria).limit(50); // Обмежуємо кількість результатів для ефективності
+    
+    // Якщо продукти не знайдені, вивести помилку
+    if (!products) {
+      return res.status(404).json({ error: 'No products found' });
+    }
 
     // Обробка ціни перед сортуванням
     if (query.sortBy === 'price') {
       products = products.map((product) => {
         const numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
-        return { ...product.toObject(), numericPrice }; // Додаємо числове поле для сортування
+        return { ...product.toObject(), numericPrice };
       });
 
-      // Сортування за ціною
       products.sort((a, b) => {
-        const order = query.order === 'desc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
+        const order = query.order === 'desc' ? -1 : 1;
         return order * (a.numericPrice - b.numericPrice);
       });
     } else if (query.sortBy === 'createdAt') {
-      // Сортування за датою
       const order = query.order === 'desc' ? -1 : 1;
       products.sort((a, b) => order * (new Date(a.createdAt) - new Date(b.createdAt)));
     }
 
-    // Повернення перших 10 продуктів
+    // Відправка відфільтрованих та відсортованих продуктів
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get Product by ID
 router.get('/:id', async (req, res) => {
