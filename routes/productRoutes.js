@@ -41,6 +41,9 @@ router.get('', async (req, res) => {
       criteria.name = { $ne: null };
       criteria.images = { $ne: [] };
     }
+
+    // Отримання даних
+    let products = await Product.find(criteria);
     
     // Якщо продукти не знайдені, вивести помилку
     if (!products) {
