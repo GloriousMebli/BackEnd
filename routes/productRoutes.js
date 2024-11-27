@@ -40,6 +40,9 @@ router.get('', async (req, res) => {
       criteria.images = { $ne: [] };
     }
 
+    // Отримання даних
+    let products = await Product.find(criteria).limit(50); // Отримуємо до 50 записів для обробки
+
     // Обробка ціни перед сортуванням
     if (query.sortBy === 'price') {
       products = products.map((product) => {
@@ -49,15 +52,16 @@ router.get('', async (req, res) => {
 
       // Сортування за ціною
       products.sort((a, b) => {
-        const order = query.order === 'asc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
+        const order = query.order === 'desc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
         return order * (a.numericPrice - b.numericPrice);
       });
     } else if (query.sortBy === 'createdAt') {
       // Сортування за датою
-      const order = query.order === 'asc' ? -1 : 1;
+      const order = query.order === 'desc' ? -1 : 1;
       products.sort((a, b) => order * (new Date(a.createdAt) - new Date(b.createdAt)));
     }
 
+    // Повернення перших 10 продуктів
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
