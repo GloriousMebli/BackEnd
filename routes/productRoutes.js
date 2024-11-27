@@ -49,7 +49,7 @@ router.get('', async (req, res) => {
       options.sort = { createdAt: query.order === 'asc' ? 1 : -1 };
     }
 
-  const products = await Product.find({}, {}, options);
+  const products = await Product.find(criteria, {}, options);
 
     res.json(products);
   } catch (error) {
