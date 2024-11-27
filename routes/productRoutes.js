@@ -49,12 +49,12 @@ router.get('', async (req, res) => {
 
       // Сортування за ціною
       products.sort((a, b) => {
-        const order = query.order === 'desc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
+        const order = query.order === 'asc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
         return order * (a.numericPrice - b.numericPrice);
       });
     } else if (query.sortBy === 'createdAt') {
       // Сортування за датою
-      const order = query.order === 'desc' ? -1 : 1;
+      const order = query.order === 'asc' ? -1 : 1;
       products.sort((a, b) => order * (new Date(a.createdAt) - new Date(b.createdAt)));
     }
 
