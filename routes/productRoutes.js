@@ -25,7 +25,6 @@ router.get('', async (req, res) => {
   try {
     const query = req.query;
     const criteria = {};
-    const options = {};
 
     // Фільтрація за категоріями
     if (query?.categoryIds?.length) {
@@ -41,15 +40,23 @@ router.get('', async (req, res) => {
       criteria.images = { $ne: [] };
     }
 
+    // Обробка ціни перед сортуванням
     if (query.sortBy === 'price') {
-      options.sort = { price: query.order === 'asc' ? 1 : -1 };
-    }
+      products = products.map((product) => {
+        const numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
+        return { ...product.toObject(), numericPrice }; // Додаємо числове поле для сортування
+      });
 
-    if (query.sortBy === 'createdAt') {
-      options.sort = { createdAt: query.order === 'asc' ? 1 : -1 };
+      // Сортування за ціною
+      products.sort((a, b) => {
+        const order = query.order === 'desc' ? -1 : 1; // 'desc' для спадання, 'asc' для зростання
+        return order * (a.numericPrice - b.numericPrice);
+      });
+    } else if (query.sortBy === 'createdAt') {
+      // Сортування за датою
+      const order = query.order === 'desc' ? -1 : 1;
+      products.sort((a, b) => order * (new Date(a.createdAt) - new Date(b.createdAt)));
     }
-
-  const products = await Product.find(criteria, {}, options);
 
     res.json(products);
   } catch (error) {
@@ -66,6 +73,7 @@ router.get('/:id', async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
     res.json(product);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -83,6 +91,7 @@ router.patch('/:id', authenticate, async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
     res.status(200).json(product);
   } catch (error) {
     res.status(500).json({ error: error.message });
