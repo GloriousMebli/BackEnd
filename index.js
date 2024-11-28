@@ -8,6 +8,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const formRoutes = require('./routes/formRoutes');
+const sitemapRoutes = require('./routes/sitemapRoutes'); // Додаємо новий маршрут
 const cors = require('cors');
 
 // Connect to MongoDB
@@ -25,6 +26,10 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('API Glorious!');
 });
+
+// Реєструємо новий маршрут для sitemap
+app.use('/', sitemapRoutes); // Тут ми підключаємо sitemap маршрути
+
 
 // Register Routes
 app.use('/api/admins', adminRoutes);
