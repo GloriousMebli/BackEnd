@@ -12,6 +12,7 @@ const generateSitemap = async (req, res) => {
 
     // Додайте статичні сторінки, як каталог та блог
     sitemap.write({ url: '/catalog', changefreq: 'weekly', priority: 0.8 });
+    sitemap.write({ url: 'catalog/:id', changefreq: 'weekly', priority: 0.8 });
     sitemap.write({ url: '/blog', changefreq: 'weekly', priority: 0.8 });
 
     // Додайте динамічні сторінки товарів (з MongoDB)
