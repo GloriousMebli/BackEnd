@@ -44,7 +44,7 @@ router.get('', async (req, res) => {
 
     // Отримання даних
     let products = await Product.find(criteria);
-    
+
     // Якщо продукти не знайдені, вивести помилку
     if (!products) {
       return res.status(404).json({ error: 'No products found' });
@@ -53,7 +53,9 @@ router.get('', async (req, res) => {
     // Обробка ціни перед сортуванням
     if (query.sortBy === 'price') {
       products = products.map((product) => {
-        const numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
+        // Ensure product.price is a string, fallback to an empty string if undefined or null
+        const priceString = product.price ? String(product.price) : '';
+        const numericPrice = parseFloat(priceString.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
         return { ...product.toObject(), numericPrice };
       });
 
