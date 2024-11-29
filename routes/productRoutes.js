@@ -53,7 +53,11 @@ router.get('', async (req, res) => {
     // Обробка ціни перед сортуванням
     if (query.sortBy === 'price') {
       products = products.map((product) => {
-        const numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
+        // Ensure price exists and is a string before calling replace
+        let numericPrice = NaN;
+        if (product.price && typeof product.price === 'string') {
+          numericPrice = parseFloat(product.price.replace(/\s|грн|ГРН|Грн|UAH|uah|Uah|\$|₴/g, ''));
+        }
         return { ...product.toObject(), numericPrice };
       });
 
