@@ -19,7 +19,7 @@ const generateSitemap = async (req, res) => {
     const products = await Product.find();
     products.forEach(product => {
       sitemap.write({
-        url: `/catalog/${product._id, product.name}`,
+        url: `/catalog/${product._id + '/' + product.name}`,
         changefreq: 'weekly',
         priority: 0.7,
       });
