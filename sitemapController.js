@@ -3,6 +3,17 @@ const { SitemapStream, streamToPromise } = require('sitemap');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
 
+// Функція для форматування імені (замінює пробіли, слеші тощо на дефіси)
+const formatName = (name) => {
+  if (!name) return 'новий-товар'; // Якщо назва порожня
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[/\\]/g, '-') // Заміна "/" і "\" на дефіс
+    .replace(/\s+/g, '-') // Заміна пробілів на дефіс
+    .replace(/[^a-z0-9а-яёїієґ-]/gi, ''); // Видалення небажаних символів
+};
+
 const generateSitemap = async (req, res) => {
   try {
     const sitemap = new SitemapStream({ hostname: 'https://glorious.com.ua' });
@@ -19,7 +30,7 @@ const generateSitemap = async (req, res) => {
     const products = await Product.find();
     products.forEach(product => {
       sitemap.write({
-        url: `/catalog/${product._id + '/' + product.name}`,
+        url: `/catalog/${product._id}/${formatName(product.name)}`,
         changefreq: 'weekly',
         priority: 0.7,
       });
