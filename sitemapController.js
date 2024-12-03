@@ -12,14 +12,14 @@ const generateSitemap = async (req, res) => {
 
     // Додайте статичні сторінки, як каталог та блог
     sitemap.write({ url: '/catalog', changefreq: 'weekly', priority: 0.8 });
-    sitemap.write({ url: '/catalog/:id', changefreq: 'weekly', priority: 0.8 });
+    sitemap.write({ url: '/catalog/:id/:name', changefreq: 'weekly', priority: 0.8 });
     sitemap.write({ url: '/blog', changefreq: 'weekly', priority: 0.8 });
 
     // Додайте динамічні сторінки товарів (з MongoDB)
     const products = await Product.find();
     products.forEach(product => {
       sitemap.write({
-        url: `/catalog/${product._id}`,
+        url: `/catalog/${product._id, product.name}`,
         changefreq: 'weekly',
         priority: 0.7,
       });
@@ -29,7 +29,7 @@ const generateSitemap = async (req, res) => {
     const categories = await Category.find();
     categories.forEach(category => {
       sitemap.write({
-        url: `/category/${category._id}`,
+        url: `/category/${category._id , category.label}`,
         changefreq: 'weekly',
         priority: 0.7,
       });
