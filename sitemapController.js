@@ -40,7 +40,7 @@ const generateSitemap = async (req, res) => {
     const categories = await Category.find();
     categories.forEach(category => {
       sitemap.write({
-        url: `/category/${category._id , category.label}`,
+        url: `/category/${category._id}/${formatName(category.label)}`,
         changefreq: 'weekly',
         priority: 0.7,
       });
